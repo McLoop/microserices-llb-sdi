@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Microsericios SDI</title>
+	<meta charset="utf-8">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+   integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+   crossorigin=""/>
+</head>
+<style type="text/css">
+    #mapCanvas{
+      height: 700px;
+      width: 100%;
+    }
+    #Titulo{
+    	margin: 20px;
+    	padding: 20px;
+    }  
+  </style>
+<body>
+
+<div class="row">
+	<div class="col-sm-6">
+		 <div id="mapCanvas"></div>
+	</div>
+	<div class="col-sm-6">
+		<div class="row bg-danger">
+		<h3 id="Titulo" class="bg-danger text-light text-center">Prueba nuestras funciones!</h3>
+		</div>
+		<br>
+		<div class="row">
+			<h6><strong>¿Quieres calcular la distancia desde tu ubicacion actual y el punto que marcaste?</strong></h6>
+			<input id="lat" value="0" hidden="true"></input>
+			<input id="lng" value="0" hidden="true"></input>
+			<div class="col-sm-5">
+				<br>
+				<button class="btn btn-danger" onclick="calcular()">Calcular distancia en kilometros</button>
+			</div>
+			<div class="col-sm-7">
+				<br><h5 id="resKmDistance"></h5>
+			</div>
+		</div><br>
+		<div class="row">
+			<h6><strong>¿Quieres saber cuanto te cobraria un taxi hasta el punto que marcaste?</strong></h6>
+			<div class="col-sm-5">
+				<br>
+				<button class="btn btn-warning" onclick="calcularCosto()">Calcular el monto de taximetro</button>
+			</div>
+			<div class="col-sm-7">
+				<br><h5 id="resCostoKm"></h5>
+			</div>
+		</div><br>
+		<div class="row">
+			<h6><strong>¿Piensas ir a pie? Adivina cuantos pasos debes dar</strong></h6>
+			<div class="col-sm-5">
+				<br>
+				<button class="btn btn-dark" onclick="calcularPasos()">Contar pasos con esta distancia</button>
+			</div>
+			<div class="col-sm-7">
+				<br><h5 id="resPasos"></h5>
+			</div>
+		</div><br><br><br><br>
+	</div>
+</div>
+
+
+</body>
+</html>
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+   integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+   crossorigin=""></script>
+<script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+<script type="text/javascript">
+//inicio mapa
+const tilesProvider="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+  //iniciacion del mapa
+let myMap = L.map('mapCanvas');
+let intentos = 0;
+var markerNeg;
+var MyLat;
+var MyLong;
+var km;
+myMap.doubleClickZoom.disable()
+  
+  //sacar latitud
+  myMap.on('dblclick', e =>{
+    if(intentos>0)
+    {
+         markerNeg.remove();
+         intentos=0;
+    }
+    if (intentos==0)
+    {
+        let latLng = myMap.mouseEventToLatLng(e.originalEvent)
+	    markerNeg = L.marker([latLng.lat, latLng.lng]).addTo(myMap)
+	    markerNeg.bindPopup("<b>Quieres venir aqui? <br> Dale al boton rojo!</b>").openPopup();
+	    intentos++; 
+	    var lat = document.getElementById('lat').value = latLng.lat;
+	    var lng= document.getElementById('lng').value = latLng.lng;
+    }
+
+  })
+  navigator.geolocation.getCurrentPosition(
+    (pos)=>{
+    const { coords }=pos
+    console.log(coords)
+    MyLat = coords.latitude;
+    MyLong = coords.longitude;
+  	myMap.setView([coords.latitude, coords.longitude],17)//latitud, longitud, zoom
+  	markerUsuario = L.marker([coords.latitude, coords.longitude]).addTo(myMap)
+  	markerUsuario.bindPopup("<b>Bienvenido al Mapa!</b><br>Este icono representa su posicion actual, da doble click en al lugar donde deseas ir.").openPopup();
+
+
+  },
+  (err)=>{
+    console.log(err)
+  },
+  {
+    enableHighAccuracy: true,
+    timeout: 5000,
+    maximumAge: 0
+  }
+    )
+  
+  //let myMap = L.map('mapCanvas').setView([51.505, -0.9],13);//latitud, longitud, zoom
+  L.tileLayer(tilesProvider,{
+    maxZoom: 18,
+  }).addTo(myMap)
+//fin mapa
+//microservicios
+function calcular(){
+	var latMarker2 = document.getElementById("lat").value;
+	var lngMarker2 = document.getElementById("lng").value;
+	if(latMarker2!=0){
+	console.log();
+	$.get("http://localhost:3000/dev/coordsDistance/"+MyLat+"/"+MyLong+"/"+latMarker2+"/"+lngMarker2,{},
+		function(response){
+			var res = response
+			//document.getElementById("resPara").innerHTML=res;
+			console.log();
+			km = res.message;
+			$('#resKmDistance').html('La distancia es de: '+res.message+' km.');
+		}
+		);
+	}else{
+		alert("Selecciona una ubicación en el mapa primero.");
+	}
+}
+
+//segundo microservicio
+function calcularCosto(){
+	var latMarker2 = document.getElementById("lat").value;
+	if(latMarker2!=0){
+	console.log(km);
+	$.get("http://localhost:3000/dev/KmCost/"+km+"/1",{},
+		function(response){
+			var res = response
+			//document.getElementById("resPara").innerHTML=res;
+			console.log();
+			$('#resCostoKm').html('El monto en Bs seria: '+res.message+' bs.');
+		}
+		);
+	}else{
+		alert("Calcula la distancia primero.");
+	}
+}
+
+function calcularPasos(){
+	var latMarker2 = document.getElementById("lat").value;
+	if(latMarker2!=0){
+	console.log(km);
+	$.get("http://localhost:3000/dev/StepCount/"+km,{},
+		function(response){
+			var res = response
+			//document.getElementById("resPara").innerHTML=res;
+			console.log();
+			$('#resPasos').html('Tendrias que dar: '+res.message+' pasos para llegar ahi.');
+		}
+		);
+	}else{
+		alert("Calcula la distancia primero.");
+	}
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js" integrity="sha384-q2kxQ16AaE6UbzuKqyBE9/u/KzioAlnx2maXQHiDX9d4/zp8Ok3f+M7DPm+Ib6IU" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.min.js" integrity="sha384-pQQkAEnwaBkjpqZ8RU1fF1AKtTcHJwFl3pblpTlHXybJjHpMYo79HY3hIi4NKxyj" crossorigin="anonymous"></script>
